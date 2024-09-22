@@ -54,13 +54,21 @@ type GenerateOption func(*generateConfig)
 
 // generateConfig holds configuration options for the Generate method
 type generateConfig struct {
-	useJSONSchema bool
+	useJSONSchema    bool
+	withFullResponse bool
 }
 
 // WithJSONSchemaValidation returns a GenerateOption that enables JSON schema validation
 func WithJSONSchemaValidation() GenerateOption {
 	return func(c *generateConfig) {
 		c.useJSONSchema = true
+	}
+}
+
+// WithFullResponse returns a GenerateOption that enables returning the full response
+func WithFullResponse() GenerateOption {
+	return func(c *generateConfig) {
+		c.withFullResponse = true
 	}
 }
 
@@ -392,13 +400,16 @@ func (l *llmImpl) Generate(ctx context.Context, prompt *Prompt, opts ...Generate
 	l.logger.Debug("Received response from LLM",
 		"response_length", len(response))
 
-	// Clean the response
-	cleanedResponse := CleanResponse(response)
-	l.logger.Debug("Response cleaned",
-		"original_length", len(response),
-		"cleaned_length", len(cleanedResponse))
+	// Clean the response if not disabled
+	if !config.withFullResponse {
+		fullResponse := response
+		response = CleanResponse(response)
+		l.logger.Debug("Response cleaned",
+			"original_length", len(fullResponse),
+			"cleaned_length", len(response))
+	}
 
-	return cleanedResponse, nil
+	return response, nil
 }
 
 // NewLLM creates a new LLM instance, potentially with memory if the option is set
